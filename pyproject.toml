@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toolpack-builder"
+version = "0.3.1"
+description = "Build ToolHub .toolpack bundles from ToolSpec tools"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "ToolPack Builder contributors"}]
+dependencies = ["toolspec>=1.6.1"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+gui = ["customtkinter>=5.2,<6"]
+
+[project.scripts]
+toolpack-builder = "toolpack_builder.cli:main"
+toolpack-builder-gui = "toolpack_builder.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
