@@ -5,16 +5,9 @@ import traceback
 
 
 def main() -> None:
-    try:
-        import customtkinter as ctk
-    except ImportError as exc:
-        raise SystemExit(
-            "CustomTkinter could not be imported by this Python interpreter.\n"
-            f"Python: {__import__('sys').executable}\n"
-            "Install it into the same interpreter with:\n"
-            f"  {__import__('sys').executable} -m pip install 'toolpack-builder[gui]'\n"
-            f"Original error: {exc}"
-        ) from exc
+    # tkinter is a system Python component. Check it before CustomTkinter,
+    # because CustomTkinter imports tkinter internally and would otherwise mask
+    # the actionable root cause.
     try:
         import tkinter
         from tkinter import filedialog as tk_filedialog, messagebox as tk_messagebox
@@ -25,12 +18,22 @@ def main() -> None:
             f"Python: {__import__('sys').executable}\n"
             f"Original error: {exc}"
         ) from exc
+    try:
+        import customtkinter as ctk
+    except ImportError as exc:
+        raise SystemExit(
+            "CustomTkinter could not be imported by this Python interpreter.\n"
+            f"Python: {__import__('sys').executable}\n"
+            "Install it into the same interpreter with:\n"
+            f"  {__import__('sys').executable} -m pip install 'toolpack-builder[gui]'\n"
+            f"Original error: {exc}"
+        ) from exc
     from .builder import BuildConfig, build_from_report, scan
     from .project import ProjectConfig, default_project_path, settings_path
 
     class App(ctk.CTk):
         def __init__(self):
-            super().__init__(); self.title("ToolPack Builder 0.3.1"); self.geometry("1120x760"); self.minsize(900,650)
+            super().__init__(); self.title("ToolPack Builder 0.4.1"); self.geometry("1120x760"); self.minsize(900,650)
             self.q=queue.Queue(); self.report=None; self.scan_fp=None; self.payload=None; self.project_path=default_project_path()
             self.project=ProjectConfig.load(self.project_path) if self.project_path.exists() else ProjectConfig()
             self._ui(); self._load_settings(); self.after(100,self._poll); self.protocol("WM_DELETE_WINDOW",self._close)

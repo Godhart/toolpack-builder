@@ -15,7 +15,7 @@ else:
     raise SystemExit(3)
 '''
 
-def test_build_uses_toolspec_name_and_toolhub_v1_format(tmp_path: Path):
+def test_build_uses_twylt_name_and_toolhub_v1_format(tmp_path: Path):
     root = tmp_path / "my_tools"; root.mkdir()
     tool = root / "hello.py"; tool.write_text(TOOL)
     out = tmp_path / "x.toolpack"
@@ -27,7 +27,7 @@ def test_build_uses_toolspec_name_and_toolhub_v1_format(tmp_path: Path):
     assert t["runnerType"] == "python_local"
     assert "run_tool_file" in t["code"]
     assert str(tool.resolve()) in t["code"]
-    assert t["packageJson"].startswith("toolspec>=1.6.1\n")
+    assert t["packageJson"].startswith("twylt>=1.0.0\n")
     assert len(result.report.valid) == 1
 
 def test_nested_glob_and_default_excludes(tmp_path: Path):
@@ -37,7 +37,7 @@ def test_nested_glob_and_default_excludes(tmp_path: Path):
     r = build(BuildConfig(root=tmp_path))
     assert [x.path.name for x in r.report.valid] == ["a.py"]
 
-def test_duplicate_toolspec_name_is_error(tmp_path: Path):
+def test_duplicate_twylt_name_is_error(tmp_path: Path):
     for d, filename in (("a", "one.py"), ("b", "two.py")):
         (tmp_path/d).mkdir(); (tmp_path/d/filename).write_text(TOOL)
     try:

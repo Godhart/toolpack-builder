@@ -8,3 +8,8 @@ def test_gui_has_separate_customtkinter_and_tkinter_diagnostics():
     assert "python3-tk" in src
     assert "tk_filedialog.askdirectory" in src
     assert "tk_messagebox.showerror" in src
+
+
+def test_gui_checks_system_tkinter_before_customtkinter():
+    src = (Path(__file__).parents[1] / "src/toolpack_builder/gui.py").read_text()
+    assert src.index("import tkinter") < src.index("import customtkinter as ctk")

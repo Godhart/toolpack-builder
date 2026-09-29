@@ -57,7 +57,7 @@ def build_from_report(config: BuildConfig, report: ScanReport, output: Path|None
     for i,item in enumerate(report.valid,1):
         assert item.spec
         name=(item.spec.declared_name or "").strip()
-        if not name: raise ValueError(f"ToolSpec name is empty for {item.path}")
+        if not name: raise ValueError(f"TWYLT name is empty for {item.path}")
         if name in names: raise ValueError(f"duplicate tool name {name!r}: {names[name]} and {item.path}")
         names[name]=item.path; entries.append((item.path,tool_entry(item.spec,name,config.runner_type,config.runner_name,config.timeout_ms)))
         emit(on_event,"build_tool",current=i,total=len(report.valid),path=item.path,message=name)

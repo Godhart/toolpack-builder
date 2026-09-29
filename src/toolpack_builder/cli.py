@@ -10,7 +10,7 @@ from .builder import BuildConfig, build, scan
 
 
 def _parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="toolpack-builder", description="Build ToolHub .toolpack files from ToolSpec tools")
+    p = argparse.ArgumentParser(prog="toolpack-builder", description="Build ToolHub .toolpack files from TWYLT tools")
     p.add_argument("--version", action="version", version=__version__)
     p.add_argument("--debug", action="store_true", default=os.getenv("TOOLPACK_BUILDER_DEBUG", "").lower() in {"1","true","yes","on"})
     p.add_argument("--error-format", choices=("human", "json"), default=os.getenv("TOOLPACK_BUILDER_ERROR_FORMAT", "human"))

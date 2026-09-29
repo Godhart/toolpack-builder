@@ -1,67 +1,156 @@
-# ToolPack Builder 0.3.1
+# ToolPack Builder
 
-Standalone CLI builder that discovers **ToolSpec** Python tools and creates a ToolHub-compatible `.toolpack` (`TOOLHUB_PACK`, version 1).
+Build ToolHub-compatible `.toolpack` bundles from Python tools that implement the **TWYLT** contract.
 
-It is intentionally a separate project. ToolSpec is the executable/introspection contract; ToolHub is the consumer of the generated artifact.
+ToolPack Builder is intentionally independent from both projects:
 
-## Install
+- **TWYLT** defines how a Python tool describes and launches itself.
+- **ToolPack Builder** discovers TWYLT tools and assembles a pack.
+- **ToolHub** imports and runs the resulting `.toolpack`.
+
+Current release: **0.4.1**. The generated format is `TOOLHUB_PACK` version 1.
+
+## Quick start
+
+### CLI
+
+Create an environment and install the project:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e '.[test]'
-pytest
-python scripts/verify_package.py
+python -m pip install -e .
 ```
 
-## Scan
+Scan a source tree:
 
 ```bash
-toolpack-builder scan ./tools --glob '**/*.py'
-toolpack-builder scan ./tools --glob '**/*_tool.py' --json
+toolpack-builder scan ./tools
 ```
 
-Hidden paths are always excluded: any file whose name starts with `.` and any file below a directory whose name starts with `.` (for example `.venv/`, `.git/`, `.cache/`). Defaults also exclude `run.py`, `test_*.py`, `tests/`, and `__pycache__/`. Include and repeatable `--exclude` patterns use the same path-glob semantics: `*` stays within one path segment and `**` spans any number of directories, including zero.
-
-Each candidate is executed with `INPUT_DESCRIBE=json_spec`. ToolSpec can return static metadata even when an import is missing. If schemas are unavailable and pip requirements are declared, Builder installs those requirements into an isolated temporary `--target` directory and retries introspection.
-
-Since 0.2.0, identical requirement sets share one isolated installation for the duration of a scan. The cache is keyed by the Python executable and normalized requirements content, and is deleted after the scan. It never installs dependencies into ToolHub or the active environment.
-
-## Build
+Build a pack:
 
 ```bash
 toolpack-builder build ./tools \
-  --glob '**/*.py' \
   --category-name my-tools \
   --output dist/my-tools.toolpack
 ```
 
-The ToolHub tool name is taken from the ToolSpec `name` returned by `INPUT_DESCRIBE=json_spec`. Duplicate ToolSpec names are a build error; an empty ToolSpec name is also a build error.
+### GUI
 
-Each generated ToolHub tool contains a minimal bootstrap equivalent to ToolSpec's `examples/list_directory/run.py`:
+Install the optional GUI dependency:
+
+```bash
+python -m pip install -e '.[gui]'
+toolpack-builder-gui
+```
+
+The CustomTkinter GUI provides source and output selection, include/exclude patterns, category configuration, separate **Scan** and **Build** operations, progress reporting, scan results, and a raw ToolPack viewer.
+
+On Debian/Ubuntu, Tk may need to be installed separately:
+
+```bash
+sudo apt install python3-tk
+```
+
+## How it works
+
+A build consists of two distinct stages.
+
+### 1. Scan
+
+ToolPack Builder recursively discovers candidate files and probes each candidate with:
+
+```text
+INPUT_DESCRIBE=json_spec
+```
+
+TWYLT is the source of truth for tool metadata. The builder obtains the tool name, description, requirements, input schema, output schema, and examples through this public introspection contract rather than importing TWYLT internals.
+
+If a tool declares dependencies that are required to complete introspection, the builder installs them into an isolated temporary `--target` directory and retries the probe. Identical requirement sets share one temporary installation during a scan. These dependencies are not installed into ToolHub or into the builder's active Python environment.
+
+### 2. Build
+
+Only successfully probed tools are converted into ToolHub entries. The ToolHub tool name comes from the TWYLT `name`, not from the source filename.
+
+Duplicate or empty TWYLT names are build errors.
+
+The generated bootstrap is equivalent to:
 
 ```python
 from pathlib import Path
-from toolspec.bootstrap import run_tool_file
+from twylt.bootstrap import run_tool_file
 
-run_tool_file(Path('/absolute/path/to/the/discovered/tool.py'))
+run_tool_file(Path("/absolute/path/to/the/discovered/tool.py"))
 ```
 
-The runtime requirements stored in ToolHub contain `toolspec>=1.6.1` plus the ToolSpec tool's declared requirements.
+Runtime requirements contain `twylt>=1.0.0` plus the requirements declared by the tool.
 
-### Important: source path and ToolHub host
+## Discovery rules
 
-ToolHub executes the bootstrap in a temporary workspace, but the bootstrap points at the discovered tool by **absolute path**. Therefore the source tree must remain accessible at that same path on the machine running ToolHub. This is deliberate for 0.1.x and mirrors the requested design; vendoring source files into a pack is a possible later mode.
+The default include pattern is:
 
-### Python runner
+```text
+**/*.py
+```
 
-Current upstream ToolHub seeds Bun and Bash runners, not Python. Generated entries request:
+Additional exclusions can be supplied repeatedly:
 
-- `runnerType = python_local`
-- `runnerName = Python`
+```bash
+toolpack-builder scan ./tools \
+  --glob '**/*_tool.py' \
+  --exclude '**/generated/**' \
+  --exclude '**/examples/**'
+```
 
-Create a matching ToolHub runner, for example with configuration conceptually equivalent to:
+Include and exclude patterns use the same path-glob rules:
+
+- `*` matches within one path component.
+- `**` spans any number of directories, including zero.
+- hidden files are always ignored;
+- everything below a hidden directory is always ignored.
+
+For example, `.venv/`, `.git/`, `.cache/`, nested hidden directories, and hidden Python files do not need explicit exclusions.
+
+The CLI additionally excludes `run.py`, `test_*.py`, `tests/`, and `__pycache__/` by default.
+
+## Categories
+
+The CLI can place generated tools below a root category:
+
+```bash
+toolpack-builder build ./tools \
+  --category-name filesystem \
+  --output dist/filesystem.toolpack
+```
+
+The GUI supports two category strategies:
+
+**Single category** places all discovered tools under one configured category.
+
+**From directory structure** maps directories relative to the scan root to nested ToolHub categories. The filename does not determine the tool name; the TWYLT `name` still does.
+
+## Important runtime assumptions
+
+### Source files are referenced by absolute path
+
+The current pack format generated by ToolPack Builder does **not** vendor the Python source into the `.toolpack`.
+
+ToolHub executes a small bootstrap that points to the original discovered tool by absolute path. Therefore the source tree must still exist at the same path on the machine where ToolHub runs the tool.
+
+A future packaging mode may make packs self-contained, but 0.4.x deliberately uses source references.
+
+### ToolHub needs a Python runner
+
+Generated entries request:
+
+```text
+runnerType = python_local
+runnerName = Python
+```
+
+If the ToolHub installation does not already provide that runner, create one equivalent to:
 
 ```json
 {
@@ -72,57 +161,126 @@ Create a matching ToolHub runner, for example with configuration conceptually eq
 }
 ```
 
-You can override the identity with `--runner-type` and `--runner-name` to match an existing ToolHub installation.
+The runner identity can be changed with `--runner-type` and `--runner-name`.
 
-## Diagnostics
+## CLI reference
 
-Human output is the default. Machine-readable command output uses `--json`. Framework errors support:
+The two primary commands are:
+
+```text
+toolpack-builder scan ROOT [options]
+toolpack-builder build ROOT --output FILE [options]
+```
+
+Common options include:
+
+```text
+--glob PATTERN
+--exclude PATTERN
+--python PYTHON
+--probe-timeout SECONDS
+--runner-type TYPE
+--runner-name NAME
+--json
+```
+
+Build additionally supports:
+
+```text
+--category-name NAME
+--timeout-ms MILLISECONDS
+```
+
+Use the built-in help for the authoritative option list:
+
+```bash
+toolpack-builder --help
+toolpack-builder scan --help
+toolpack-builder build --help
+```
+
+### Exit status
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | Command completed without failed candidates |
+| `1` | Scan/build completed, but at least one candidate failed |
+| `2` | Builder or configuration failure |
+
+A build may still write a `.toolpack` when individual candidates fail. Successfully probed TWYLT tools are retained while the non-zero exit status remains useful for CI.
+
+### Machine-readable output and debugging
+
+Command results can be emitted as JSON:
+
+```bash
+toolpack-builder scan ./tools --json
+```
+
+Framework errors can also be emitted as JSON, and tracebacks can be enabled:
 
 ```bash
 toolpack-builder --error-format json build ...
-toolpack-builder --debug ...
-TOOLPACK_BUILDER_DEBUG=1 toolpack-builder ...
-TOOLPACK_BUILDER_ERROR_FORMAT=json toolpack-builder ...
+toolpack-builder --debug build ...
 ```
 
-## Exit status
+Equivalent environment variables are available:
 
-- `0`: command completed with no failed candidates
-- `1`: scan/build completed but at least one candidate failed
-- `2`: builder/configuration failure
+```text
+TOOLPACK_BUILDER_ERROR_FORMAT=json
+TOOLPACK_BUILDER_DEBUG=1
+```
 
-A `.toolpack` is still written when some candidates fail; successful ToolSpec tools are retained. This makes directory scans useful while preserving a non-zero CI signal.
+## GUI state
 
-## Compatibility verification
+GUI project parameters are persisted between launches. Scan results are deliberately **not** persisted, because the source tree may have changed while the application was closed.
 
-The generated payload is validated against the ToolHub v1 fields before it is written, and the test suite verifies a JSON serialize/deserialize round trip. The contract mirrors current ToolHub export/import (`TOOLHUB_PACK`, version 1).
+On Linux, configuration is stored below:
 
-An opt-in integration test exercises the real published ToolSpec 1.6.1 example rather than a mock. With a ToolSpec 1.6.1 checkout:
+```text
+$XDG_CONFIG_HOME/toolpack-builder
+```
+
+or, when `XDG_CONFIG_HOME` is not set:
+
+```text
+~/.config/toolpack-builder
+```
+
+The corresponding platform configuration directory is used on other operating systems.
+
+Changing scan-relevant parameters after a scan marks the current results as stale and disables **Build** until another scan is completed.
+
+## Development and verification
+
+Install test dependencies and run the normal offline suite:
 
 ```bash
-TOOLSPEC_REPO=/path/to/toolspec pytest -q tests/integration/test_toolspec_161.py
+python -m pip install -e '.[test]'
+pytest
+python scripts/verify_package.py
 ```
 
-The normal suite remains offline and reproducible; CI/release candidates should run both suites when the upstream checkout is available.
+The generated ToolHub payload is validated before writing and is covered by JSON round-trip tests.
 
-## Design records
-
-See `docs/adr/`. Regression tests are cumulative: fixes should add tests rather than replacing old coverage.
-
-## GUI (0.3.1)
-
-Install the optional GUI dependency and start it:
+An opt-in integration test exercises a real TWYLT checkout:
 
 ```bash
-pip install -e '.[gui]'
-toolpack-builder-gui
+TWYLT_REPO=/path/to/twylt \
+pytest -q tests/integration/test_twylt_100.py
 ```
 
-The CustomTkinter GUI provides source/include/exclude configuration, output selection, single or directory-derived categories, separate Scan and Build actions, progress, report and raw ToolPack viewers, and persistent project parameters. Hidden paths remain automatically excluded by the core discovery layer.
+The normal test suite remains offline and reproducible.
 
-GUI project state is stored under the platform config directory (`$XDG_CONFIG_HOME/toolpack-builder` or `~/.config/toolpack-builder` on Linux; `%APPDATA%\\toolpack-builder` on Windows). Scan results themselves are deliberately not persisted.
+Architectural decisions are recorded in [`docs/adr/`](docs/adr/). Regression tests are cumulative: bug fixes should add coverage rather than replace existing tests. Release history is maintained in [`CHANGELOG.md`](CHANGELOG.md).
 
+## Project status
 
-## GUI troubleshooting
+ToolPack Builder currently targets:
 
-If `toolpack-builder-gui` cannot start, it now distinguishes between a missing `customtkinter` pip package and a missing stdlib `tkinter` OS component. The diagnostic includes the exact Python interpreter used by the launcher. On Debian/Ubuntu, install the latter with `sudo apt install python3-tk`.
+- TWYLT `>=1.0.0`;
+- TWYLT protocol 1.8-compatible introspection;
+- ToolHub `TOOLHUB_PACK` version 1;
+- Python `>=3.10`.
+
+The project is licensed under the MIT License.

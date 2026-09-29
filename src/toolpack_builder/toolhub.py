@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any
-from .models import ToolSpecData
+from .models import TwyltData
 
 
 def slugify(name: str) -> str:
@@ -11,24 +11,24 @@ def slugify(name: str) -> str:
 
 
 def bootstrap_code(tool_path: Path) -> str:
-    # Same bootstrap pattern as ToolSpec examples/list_directory/run.py.
+    # Same bootstrap pattern as TWYLT examples/list_directory/run.py.
     literal = repr(str(tool_path.resolve()))
     return (
         "from pathlib import Path\n"
-        "from toolspec.bootstrap import run_tool_file\n\n"
+        "from twylt.bootstrap import run_tool_file\n\n"
         f"run_tool_file(Path({literal}))\n"
     )
 
 
-def runtime_requirements(spec: ToolSpecData) -> str:
-    lines = ["toolspec>=1.6.1"]
+def runtime_requirements(spec: TwyltData) -> str:
+    lines = ["twylt>=1.0.0"]
     content = spec.requirements_content.strip()
     if content:
         lines.append(content)
     return "\n".join(lines).rstrip() + "\n"
 
 
-def tool_entry(spec: ToolSpecData, name: str, runner_type: str, runner_name: str, timeout_ms: int) -> dict[str, Any]:
+def tool_entry(spec: TwyltData, name: str, runner_type: str, runner_name: str, timeout_ms: int) -> dict[str, Any]:
     return {
         "name": name,
         "slug": slugify(name),

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toolpack-builder"
-version = "0.3.1"
-description = "Build ToolHub .toolpack bundles from ToolSpec tools"
+version = "0.4.1"
+description = "Build ToolHub .toolpack bundles from TWYLT tools"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "ToolPack Builder contributors"}]
-dependencies = ["toolspec>=1.6.1"]
+dependencies = ["twylt>=1.0.0"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]

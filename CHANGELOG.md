@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1
+
+- Restructured README around the user workflow: quick start, scan/build model, discovery, categories, runtime assumptions, CLI, GUI, and development.
+- Consolidated duplicated GUI, diagnostics, and verification material.
+- Kept important runtime constraints visible while moving historical/architectural detail to CHANGELOG and ADRs.
+
+## 0.4.0
+
+- Migrated the executable/introspection contract from ToolSpec to TWYLT 1.0.0 / protocol 1.8.
+- Runtime bootstrap now imports `twylt.bootstrap.run_tool_file`.
+- Generated ToolHub requirements now include `twylt>=1.0.0`.
+- Renamed current internal ToolSpec terminology to TWYLT (`TwyltData`, diagnostics, CLI text).
+- Replaced the upstream ToolSpec integration test with a TWYLT 1.0.0 contract test using `TWYLT_REPO`.
+- Fixed GUI startup diagnosis to check system `tkinter` before importing CustomTkinter.
+- Preserved historical ToolSpec references in older changelog entries and ADRs.
+
 ## 0.3.1
 
 - Fixed GUI startup diagnostics: CustomTkinter and stdlib tkinter are diagnosed separately.

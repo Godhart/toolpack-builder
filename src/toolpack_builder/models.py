@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 @dataclass(slots=True)
-class ToolSpecData:
+class TwyltData:
     path: Path
     description: str
     requirements_tool: str
@@ -21,7 +21,7 @@ class ScanItem:
     path: Path
     status: str
     message: str = ""
-    spec: ToolSpecData | None = None
+    spec: TwyltData | None = None
 
 @dataclass(slots=True)
 class ScanReport:
